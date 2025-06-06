@@ -1,4 +1,8 @@
 "use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useAdmin } from "@/hooks/useAdmin";
 
 import {
   Table,
@@ -38,10 +42,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
+import { ClipLoader } from "react-spinners";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import { getAllSchedules, createSchedule } from "@/lib/api/schedules";
+import { getAllBins } from "@/lib/api/bins";
+import { getAllPersonnel } from "@/lib/api/personnel";
+import { ScheduleType } from "@/types/schedule";
+import { BinType } from "@/types/bin";
+import { PersonnelType } from "@/types/personnel";
 
 import { IoMdClose } from "react-icons/io";
 
@@ -49,13 +62,52 @@ const formSchema = z.object({
   bins: z.array(z.string()).min(2, {
     message: "Select at least two bins",
   }),
-  personnelNo: z.string().length(3, {
-    message: "Invalid personnel number",
-  }),
+  personnelNo: z.string(),
   date: z.date().min(new Date(), { message: "Date must be in the future" }),
 });
 
 export default function Schedules() {
+  const admin = useAdmin();
+  const [open, setOpen] = useState(false);
+  const [schedules, setSchedules] = useState<ScheduleType[]>([]);
+  const [bins, setBins] = useState<BinType[]>([]);
+  const [personnel, setPersonnel] = useState<PersonnelType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const loadSchedules = async () => {
+    const data = await getAllSchedules();
+    setSchedules(data);
+  };
+
+  useEffect(() => {
+    loadSchedules();
+  }, []);
+
+  useEffect(() => {
+    const fetchBins = async () => {
+      try {
+        const data = await getAllBins();
+        setBins(data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBins();
+  }, []);
+
+  useEffect(() => {
+    const fetchPersonnel = async () => {
+      try {
+        const data = await getAllPersonnel();
+        setPersonnel(data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPersonnel();
+  }, []);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -65,33 +117,65 @@ export default function Schedules() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-  }
+  const { reset, handleSubmit } = form;
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setLoading(true);
+    if (!admin?.username) {
+      toast.error("Admin not logged in");
+      return;
+    }
+    try {
+      const payload = {
+        binIds: values.bins, // map bins -> binIds
+        personnelId: values.personnelNo, // map personnelNo -> personnelId
+        scheduledDate: values.date.toISOString(), // Date as ISO string
+        createdBy: admin?.username,
+      };
+
+      console.log(payload);
+
+      const newSchedule = await createSchedule(payload);
+      toast.success("Schedule created successfully!");
+      form.reset();
+      setLoading(false);
+      setOpen(false);
+      await loadSchedules();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to create schedule.");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-[1.6rem] font-semibold">Schedule Waste Disposal</h1>
       </div>
       <div className="flex justify-end">
-        <AlertDialog>
+        <AlertDialog open={open} onOpenChange={setOpen}>
           <AlertDialogTrigger asChild>
-            <Button className="bg-main-green text-white font-semibold rounded-sm">
+            <Button
+              className="bg-main-green text-white font-semibold rounded-sm"
+              onClick={() => setOpen(true)}
+            >
               Create Schedule
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <div className="flex justify-between">
-                <AlertDialogTitle>Add New Wastebin Details</AlertDialogTitle>
-                <AlertDialogCancel className="border-none bg-white text-gray-500 hover:text-gray-800">
+                <AlertDialogTitle>Create a New Schedule</AlertDialogTitle>
+                <AlertDialogCancel
+                  className="border-none bg-white text-gray-500 hover:text-gray-800"
+                  onClick={() => setOpen(false)}
+                >
                   <IoMdClose />
                 </AlertDialogCancel>
               </div>
 
               <AlertDialogDescription>
-                Fill in the details of the new personnel to add them to the
-                database.
+                Fill in the details of the new schedule below.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div>
@@ -108,48 +192,48 @@ export default function Schedules() {
                         <FormItem>
                           <FormLabel>Select Bins</FormLabel>
                           <FormControl>
-                            <div className="flex flex-col gap-2 border p-2 rounded-md max-h-[200px] overflow-y-auto">
-                              {["BIN001", "BIN002", "BIN003", "BIN004"].map(
-                                (binId) => (
-                                  <label
-                                    key={binId}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      value={binId}
-                                      checked={
-                                        Array.isArray(field.value) &&
-                                        field.value.includes(binId)
+                            <div className="flex space-x-3 flex-wrap border p-2 rounded-md max-h-[200px] overflow-y-auto">
+                              {bins.map((bin) => (
+                                <label
+                                  key={bin._id}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    value={bin.binId}
+                                    checked={
+                                      Array.isArray(field.value) &&
+                                      field.value.includes(bin.binId)
+                                    }
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const value = e.target.value;
+
+                                      let currentValues = Array.isArray(
+                                        field.value
+                                      )
+                                        ? field.value
+                                        : [];
+
+                                      if (checked) {
+                                        field.onChange([
+                                          ...currentValues,
+                                          value,
+                                        ]);
+                                      } else {
+                                        field.onChange(
+                                          currentValues.filter(
+                                            (v) => v !== value
+                                          )
+                                        );
                                       }
-                                      onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        const value = e.target.value;
-
-                                        let currentValues = Array.isArray(
-                                          field.value
-                                        )
-                                          ? field.value
-                                          : [];
-
-                                        if (checked) {
-                                          field.onChange([
-                                            ...currentValues,
-                                            value,
-                                          ]);
-                                        } else {
-                                          field.onChange(
-                                            currentValues.filter(
-                                              (v) => v !== value
-                                            )
-                                          );
-                                        }
-                                      }}
-                                    />
-                                    <span>{binId}</span>
-                                  </label>
-                                )
-                              )}
+                                    }}
+                                  />
+                                  <span>
+                                    {bin.binId + " (" + bin.fillLevel + ")"}
+                                  </span>
+                                </label>
+                              ))}
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -171,12 +255,17 @@ export default function Schedules() {
                                 value={field.value}
                               >
                                 <SelectTrigger className="w-[200px]">
-                                  <SelectValue placeholder="Theme" />
+                                  <SelectValue placeholder="Personnel ID and Name" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="001">001</SelectItem>
-                                  <SelectItem value="002">002</SelectItem>
-                                  <SelectItem value="003">003</SelectItem>
+                                  {personnel.map((person) => (
+                                    <SelectItem
+                                      key={person._id}
+                                      value={person.personnelId}
+                                    >
+                                      {person.personnelId + " " + person.name}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </FormControl>
@@ -218,9 +307,15 @@ export default function Schedules() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-[100%]">
-                    Submit
-                  </Button>
+                  {loading ? (
+                    <Button type="submit" className="w-[100%]" disabled>
+                      <ClipLoader size={20} color="#96D127" />
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="w-[100%]">
+                      Create
+                    </Button>
+                  )}
                 </form>
               </Form>
             </div>
@@ -231,10 +326,9 @@ export default function Schedules() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Bin ID</TableHead>
+              <TableHead className="w-[100px]">Schedule No</TableHead>
               <TableHead className="">Creation Date</TableHead>
-              <TableHead className="">Scheduler</TableHead>
-              <TableHead>Location</TableHead>
+              <TableHead className="">Scheduled By</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Personnel ID</TableHead>
               <TableHead>Status</TableHead>
@@ -242,50 +336,32 @@ export default function Schedules() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">BIN001</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>judith</TableCell>
-              <TableCell>TEAL Studio. -6.332, 0.8423</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>PERSON050</TableCell>
-              <TableCell>Pending</TableCell>
-              <TableCell className="text-right">
-                <div className="flex space-x-3 justify-end">
-                  <h2 className="text-green-900 underline hover:text-gray-500 cursor-pointer">
-                    View
-                  </h2>
-                  <h2 className="text-blue-900 underline hover:text-gray-500 cursor-pointer">
-                    Edit
-                  </h2>
-                  <h2 className="text-red-700 underline hover:text-gray-500 cursor-pointer">
-                    Delete
-                  </h2>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">BIN002</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>judith</TableCell>
-              <TableCell>TEAL Studio. -6.332, 0.8423</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>PERSON-050</TableCell>
-              <TableCell>Pending</TableCell>
-              <TableCell className="text-right">
-                <div className="flex space-x-3 justify-end">
-                  <h2 className="text-green-900 underline hover:text-gray-500 cursor-pointer">
-                    View
-                  </h2>
-                  <h2 className="text-blue-900 underline hover:text-gray-500 cursor-pointer">
-                    Edit
-                  </h2>
-                  <h2 className="text-red-700 underline hover:text-gray-500 cursor-pointer">
-                    Delete
-                  </h2>
-                </div>
-              </TableCell>
-            </TableRow>
+            {schedules.map((schedule) => (
+              <TableRow key={schedule._id}>
+                <TableCell className="font-medium">
+                  {schedule.scheduleNo}
+                </TableCell>
+                <TableCell>{new Date(schedule.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell>{schedule.createdBy}</TableCell>
+                <TableCell>{new Date(schedule.scheduledDate).toLocaleDateString()}</TableCell>
+                <TableCell>{schedule.personnelId}</TableCell>
+                <TableCell>{schedule.status}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex space-x-3 justify-end">
+                    <h2
+                      className="text-green-900 underline hover:text-gray-500 cursor-pointer"
+                      onClick={() =>
+                        router.push(
+                          `/dashboard/schedule-management/${schedule._id}`
+                        )
+                      }
+                    >
+                      View
+                    </h2>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

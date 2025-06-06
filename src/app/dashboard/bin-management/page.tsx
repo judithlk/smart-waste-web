@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import {
   Table,
   TableBody,
@@ -31,10 +34,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { ClipLoader } from "react-spinners";
 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  getAllBins,
+  getBinById,
+  createBin,
+  editBin,
+  updateBinStatus,
+  deleteBin,
+} from "@/lib/api/bins";
+
+import { BinType } from "@/types/bin";
 
 import { IoMdClose } from "react-icons/io";
 
@@ -54,6 +70,24 @@ const formSchema = z.object({
 });
 
 export default function BinManagement() {
+  const [bins, setBins] = useState<BinType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchBins = async () => {
+      try {
+        const data = await getAllBins();
+        setBins(data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBins();
+  }, []);
+
+  console.log(bins);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,9 +108,9 @@ export default function BinManagement() {
       <div className="flex justify-end">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button className="bg-main-green text-white font-semibold rounded-sm">
+            {/* <Button className="bg-main-green text-white font-semibold rounded-sm">
               Add New Bin
-            </Button>
+            </Button> */}
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -166,7 +200,9 @@ export default function BinManagement() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-[100%]">Submit</Button>
+                  <Button type="submit" className="w-[100%]">
+                    Submit
+                  </Button>
                 </form>
               </Form>
             </div>
@@ -174,6 +210,7 @@ export default function BinManagement() {
         </AlertDialog>
       </div>
       <div className="bg-white p-3 rounded-md">
+        {loading ? <div className="p-4 text-sm"><ClipLoader size={25} color="#96D127" /></div> : null}
         <Table>
           <TableHeader>
             <TableRow>
@@ -187,42 +224,42 @@ export default function BinManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">BIN001</TableCell>
-              <TableCell>TEAL Studio. -6.332, 0.8423</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>06-05-2025</TableCell>
-              <TableCell>75%</TableCell>
-              <TableCell>Active</TableCell>
-              <TableCell className="text-right">
-                <div className="flex space-x-3 justify-end">
-                  <h2 className="text-blue-900 underline hover:text-gray-500 cursor-pointer">
-                    View
-                  </h2>
-                  <h2 className="text-green-700 underline hover:text-gray-500 cursor-pointer">
-                    Schedule Empty
-                  </h2>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">BIN002</TableCell>
-              <TableCell>LA's Office. -10.332, 5.8423</TableCell>
-              <TableCell>06-10-2023</TableCell>
-              <TableCell>06-05-2025</TableCell>
-              <TableCell>75%</TableCell>
-              <TableCell>Active</TableCell>
-              <TableCell className="text-right">
-                <div className="flex space-x-3 justify-end">
-                  <h2 className="text-blue-900 underline hover:text-gray-500 cursor-pointer">
-                    View
-                  </h2>
-                  <h2 className="text-green-700 underline hover:text-gray-500 cursor-pointer">
-                    Schedule Empty
-                  </h2>
-                </div>
-              </TableCell>
-            </TableRow>
+            {bins.map((bin) => (
+              <TableRow key={bin._id}>
+                <TableCell className="font-medium">{bin.binId}</TableCell>
+                <TableCell>{bin.location?.address}</TableCell>
+                <TableCell>
+                  {new Date(bin.placementDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {bin.lastEmptiedAt
+                    ? new Date(bin.lastEmptiedAt).toLocaleString()
+                    : "Never"}
+                </TableCell>
+                <TableCell>{bin.fillLevel}</TableCell>
+                <TableCell>{bin.status}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex space-x-3 justify-end">
+                    <h2
+                      className="text-blue-900 underline hover:text-gray-500 cursor-pointer"
+                      onClick={() =>
+                        router.push(`/dashboard/bin-management/${bin._id}`)
+                      }
+                    >
+                      View
+                    </h2>
+                    <h2
+                      className="text-green-700 underline hover:text-gray-500 cursor-pointer"
+                      onClick={() =>
+                        router.push(`/dashboard/schedule-management`)
+                      }
+                    >
+                      Schedule Empty
+                    </h2>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

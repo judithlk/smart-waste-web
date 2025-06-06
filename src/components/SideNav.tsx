@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+
+import api from "@/lib/api/api";
+import { useAdmin } from "@/hooks/useAdmin";
 
 import { LuLayoutDashboard } from "react-icons/lu";
 import { RiDeleteBin5Fill, RiLogoutBoxRLine } from "react-icons/ri";
@@ -10,7 +14,23 @@ import { FaHistory } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 
 export default function SideNav() {
+  const admin = useAdmin();
+
   const pathname = usePathname();
+  const router = useRouter();
+
+
+  const logoutUser = async () => {
+  try {
+    await api.post("/auth/logout"); // optional
+  } catch (err) {
+    console.warn("Logout API failed, ignoring...");
+  } finally {
+    localStorage.removeItem("token");
+    router.push("/"); // Redirect to login/homepage
+  }
+};
+
 
   return (
     <div className="w-[20%] h-screen p-3 flex flex-col justify-between border-r border-gray-200">
@@ -92,9 +112,13 @@ export default function SideNav() {
         </Link>
       </div>
       <div className="">
-        <div className="p-2 hover:bg-main-green rounded-sm hover:text-white flex items-center space-x-2">
-          <div className="rounded-full bg-main-green hover:bg-none p-1">
-            <RiLogoutBoxRLine className="size-5" />
+        <div className="p-2 px-4 flex items-center space-x-2">
+          <h2>Hello,</h2>
+          <h2 className="font-semibold">{admin?.username || "Admin"}</h2>
+        </div>
+        <div className="p-2 hover:bg-main-green font-semibold rounded-sm hover:text-white flex items-center space-x-2 cursor-pointer" onClick={logoutUser}>
+          <div className="rounded-full bg-white p-1">
+            <RiLogoutBoxRLine className="size-5 fill-main-green text-white" />
           </div>
           <h2>Logout</h2>
         </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import SideNav from "@/components/SideNav";
-
+import DashboardProtection from "@/components/wrappers/DashboardProtection";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -14,14 +14,11 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   return (
-    <div
-        className={`antialiased bg-gray-100 flex`}
-      >
-        <SideNav />
-        <main className="py-4 px-5 w-[85%]">
-        {children}
-        </main>
-      </div>
-   
+    <DashboardProtection>
+      <div className={`antialiased bg-gray-100 flex`}>
+      <SideNav />
+      <main className="py-4 px-5 w-[85%]">{children}</main>
+    </div>
+    </DashboardProtection>
   );
 }
