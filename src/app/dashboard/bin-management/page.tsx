@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -15,11 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -27,14 +24,12 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import { ClipLoader } from "react-spinners";
 
 import { z } from "zod";
@@ -43,11 +38,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   getAllBins,
-  getBinById,
-  createBin,
-  editBin,
-  updateBinStatus,
-  deleteBin,
 } from "@/lib/api/bins";
 
 import { BinType } from "@/types/bin";
@@ -86,7 +76,7 @@ export default function BinManagement() {
     fetchBins();
   }, []);
 
-  console.log(bins);
+  // console.log(bins);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

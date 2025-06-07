@@ -4,7 +4,7 @@ export type BinType = {
   location: {
     lat: number;
     lon: number;
-    address: String,
+    address: string,
   };
   placementDate: string;
   lastEmptiedAt: string;

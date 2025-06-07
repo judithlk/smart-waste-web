@@ -24,7 +24,7 @@ export default function SideNav() {
   try {
     await api.post("/auth/logout"); // optional
   } catch (err) {
-    console.warn("Logout API failed, ignoring...");
+    console.warn("Logout API failed, ignoring...", err);
   } finally {
     localStorage.removeItem("token");
     router.push("/"); // Redirect to login/homepage

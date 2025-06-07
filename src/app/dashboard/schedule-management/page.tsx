@@ -7,7 +7,6 @@ import { useAdmin } from "@/hooks/useAdmin";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -16,11 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -28,7 +25,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -117,7 +113,7 @@ export default function Schedules() {
     },
   });
 
-  const { reset, handleSubmit } = form;
+  // const { reset, handleSubmit } = form;
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
@@ -133,7 +129,7 @@ export default function Schedules() {
         createdBy: admin?.username,
       };
 
-      console.log(payload);
+      // console.log(payload);
 
       const newSchedule = await createSchedule(payload);
       toast.success("Schedule created successfully!");
@@ -209,7 +205,7 @@ export default function Schedules() {
                                       const checked = e.target.checked;
                                       const value = e.target.value;
 
-                                      let currentValues = Array.isArray(
+                                      const currentValues = Array.isArray(
                                         field.value
                                       )
                                         ? field.value

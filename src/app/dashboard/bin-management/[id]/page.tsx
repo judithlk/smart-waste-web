@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { notFound } from "next/navigation";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ export default function BinPage({
 }) {
   const resolvedParams = use(params);
   const [bin, setBin] = useState(null as BinType | null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
 const handleDelete = async () => {
